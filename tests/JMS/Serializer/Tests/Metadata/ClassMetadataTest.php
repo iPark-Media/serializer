@@ -23,30 +23,35 @@ use JMS\Serializer\Metadata\ClassMetadata;
 
 class ClassMetadataTest extends \PHPUnit_Framework_TestCase
 {
-    public function testSetAccessorOrder()
+    /**
+     * @dataProvider setAccessorOrderDataProvider
+     */
+    public function testSetAccessorOrder($order, array $customOrder, $expected, $message)
     {
-        $metadata = new ClassMetadata('JMS\Serializer\Tests\Metadata\PropertyMetadataOrder');
-        $metadata->addPropertyMetadata(new PropertyMetadata('JMS\Serializer\Tests\Metadata\PropertyMetadataOrder', 'b'));
-        $metadata->addPropertyMetadata(new PropertyMetadata('JMS\Serializer\Tests\Metadata\PropertyMetadataOrder', 'a'));
-        $this->assertEquals(array('b', 'a'), array_keys($metadata->propertyMetadata));
+        $class = 'JMS\Serializer\Tests\Metadata\PropertyMetadataOrder'; // Note: defined in this file below ClassMetadataTest
+        $metadata = new ClassMetadata($class);
+        $metadata->addPropertyMetadata(new PropertyMetadata($class, 'z'));
+        $metadata->addPropertyMetadata(new PropertyMetadata($class, 'a'));
+        $metadata->addPropertyMetadata(new PropertyMetadata($class, 'b'));
+        $metadata->addPropertyMetadata(new PropertyMetadata($class, 'c'));
 
-        $metadata->setAccessorOrder(ClassMetadata::ACCESSOR_ORDER_ALPHABETICAL);
-        $this->assertEquals(array('a', 'b'), array_keys($metadata->propertyMetadata));
+        if ($order) {
+            $metadata->setAccessorOrder($order, $customOrder);
+        }
+        $this->assertEquals($expected, array_keys($metadata->propertyMetadata), $message);
+    }
 
-        $metadata->setAccessorOrder(ClassMetadata::ACCESSOR_ORDER_CUSTOM, array('b', 'a'));
-        $this->assertEquals(array('b', 'a'), array_keys($metadata->propertyMetadata));
-
-        $metadata->setAccessorOrder(ClassMetadata::ACCESSOR_ORDER_CUSTOM, array('a', 'b'));
-        $this->assertEquals(array('a', 'b'), array_keys($metadata->propertyMetadata));
-
-        $metadata->setAccessorOrder(ClassMetadata::ACCESSOR_ORDER_CUSTOM, array('b'));
-        $this->assertEquals(array('b', 'a'), array_keys($metadata->propertyMetadata));
-
-        $metadata->setAccessorOrder(ClassMetadata::ACCESSOR_ORDER_CUSTOM, array('a'));
-        $this->assertEquals(array('a', 'b'), array_keys($metadata->propertyMetadata));
-
-        $metadata->setAccessorOrder(ClassMetadata::ACCESSOR_ORDER_CUSTOM, array('foo', 'bar'));
-        $this->assertEquals(array('b', 'a'), array_keys($metadata->propertyMetadata));
+    public function setAccessorOrderDataProvider()
+    {
+        return array(
+            array(null, array(), array('z', 'a', 'b', 'c'), 'Default order incorrect'),
+            array(ClassMetadata::ACCESSOR_ORDER_ALPHABETICAL, array(), array('a', 'b', 'c', 'z'), 'Alphabetical order incorrect'),
+            array(ClassMetadata::ACCESSOR_ORDER_CUSTOM, array('b', 'a'), array('b', 'a', 'z', 'c'), 'Custom (b,a) order incorrect'),
+            array(ClassMetadata::ACCESSOR_ORDER_CUSTOM, array('a', 'b'), array('a', 'b', 'z', 'c'), 'Custom (a,b) order incorrect'),
+            array(ClassMetadata::ACCESSOR_ORDER_CUSTOM, array('b'), array('b', 'z', 'a', 'c'), 'Custom (b) order incorrect'),
+            array(ClassMetadata::ACCESSOR_ORDER_CUSTOM, array('a'), array('a', 'z', 'b', 'c'), 'Custom (a) order incorrect'),
+            array(ClassMetadata::ACCESSOR_ORDER_CUSTOM, array('foo', 'bar'), array('z', 'a', 'b', 'c'), 'Custom (foo,bar) order incorrect'),
+        );
     }
 
     /**
@@ -62,8 +67,7 @@ class ClassMetadataTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($getterName, $metadata->getter);
         $this->assertEquals($setterName, $metadata->setter);
 
-        // setter is not supported by setValue(), any idea?
-        $object->{$metadata->setter}('x');
+        $metadata->setValue($object, 'x');
 
         $this->assertEquals(sprintf('%1$s:%1$s:x', strtoupper($property)), $metadata->getValue($object));
     }
@@ -103,7 +107,7 @@ class ClassMetadataTest extends \PHPUnit_Framework_TestCase
 
 class PropertyMetadataOrder
 {
-    private $b, $a;
+    private $z, $a, $b, $c;
 }
 
 class PropertyMetadataPublicMethod
